@@ -28,7 +28,7 @@ module "vpc" {
 }
 
 module "gke" {
-  source  = "../../modules/http_server"
+  source  = "../../modules/gke"
   project = "${var.project}"
   subnet  = "${module.vpc.subnet}"
   env     = "${local.env}"
