@@ -27,10 +27,10 @@ steps:
         echo "git clone -b ${array[2]} ${_APP_REPO}"
         git clone -b ${array[2]} ${_APP_REPO}
         
-        sed -i s/PROJECT_ID/$PROJECT_ID/g $_APP_NAME/solution/gke-autopilot-cluster/environments/*/terraform.tfvars
-        sed -i s/PROJECT_ID/$PROJECT_ID/g $_APP_NAME/solution/gke-autopilot-cluster/environments/*/backend.tf
-        sed -i s/_REGION/$_REGION/g $_APP_NAME/solution/gke-autopilot-cluster/modules/*/main.tf
-        sed -i s/_APP_NAME/$_APP_NAME/g $_APP_NAME/solution/gke-autopilot-cluster/modules/*/main.tf
+        sed -i s/PROJECT_ID/$PROJECT_ID/g $_APP_NAME/environments/*/terraform.tfvars
+        sed -i s/PROJECT_ID/$PROJECT_ID/g $_APP_NAME/environments/*/backend.tf
+        sed -i s/_REGION/$_REGION/g $_APP_NAME/modules/*/main.tf
+        sed -i s/_APP_NAME/$_APP_NAME/g $_APP_NAME/modules/*/main.tf
     id: clone-app
     entrypoint: bash
   - id: 'tf init'
@@ -39,11 +39,11 @@ steps:
     args:
         - '-c'
         - |
-            if [ -d "$_APP_NAME/solution/gke-autopilot-cluster/environments/dev/" ]; then
-              cd $_APP_NAME/solution/gke-autopilot-cluster/environments/dev
+            if [ -d "$_APP_NAME/environments/dev/" ]; then
+              cd $_APP_NAME/environments/dev
               terraform init
             else
-              for dir in $_APP_NAME/solution/gke-autopilot-cluster/environments/*/
+              for dir in $_APP_NAME/environments/*/
               do 
                 cd ${dir}   
                 env=${dir%*/}
@@ -55,4 +55,41 @@ steps:
                 terraform init || exit 1
                 cd ../../
               done
-            fi 
+            fi
+  - id: 'tf plan'
+    name: 'hashicorp/terraform:1.0.0'
+    entrypoint: 'sh'
+    args:
+        - '-c'
+        - |
+          if [ -d "$_APP_NAME/environments/dev/" ]; then
+            cd $_APP_NAME/environments/dev
+            terraform plan
+          else
+            for dir in $_APP_NAME/environments/*/
+            do 
+              cd ${dir}   
+              env=${dir%*/}
+              env=${env#*/}  
+              echo ""
+              echo "*************** TERRAFOM PLAN ******************"
+              echo "******* At environment: ${env} ********"
+              echo "*************************************************"
+              terraform plan || exit 1
+              cd ../../
+            done
+          fi
+  - id: 'tf apply'
+    name: 'hashicorp/terraform:1.0.0'
+    entrypoint: 'sh'
+    args:
+        - '-c'
+        - |
+          if [ -d "$_APP_NAME/environments/dev/" ]; then
+            cd $_APP_NAME/environments/dev      
+            terraform apply -auto-approve
+          else
+            echo "***************************** SKIPPING APPLYING *******************************"
+            echo "Branch '$_BRANCH_NAME' does not represent an oficial environment."
+            echo "*******************************************************************************"
+          fi
