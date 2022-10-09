@@ -15,6 +15,7 @@ steps:
 
         echo BRANCH_NAME=${array[2]}
         export BRANCH_NAME=${array[2]}
+        export _BRANCH_NAME=${array[2]}
 
         if ((${array[1]} == "tags")); then
           echo "TAG " ${BRANCH_NAME}
@@ -25,6 +26,33 @@ steps:
         fi
         echo "git clone -b ${array[2]} ${_APP_REPO}"
         git clone -b ${array[2]} ${_APP_REPO}
-        echo done
+        
+        sed -i s/PROJECT_ID/$PROJECT_ID/g solution/gke-autopilot-cluster/environments/*/terraform.tfvars
+        sed -i s/PROJECT_ID/$PROJECT_ID/g solution/gke-autopilot-cluster/environments/*/backend.tf
+        sed -i s/_REGION/$_REGION/g solution/gke-autopilot-cluster/modules/*/main.tf
+        sed -i s/_APP_NAME/$_APP_NAME/g solution/gke-autopilot-cluster/modules/*/main.tf
     id: clone-app
     entrypoint: bash
+  - id: 'tf init'
+    name: 'hashicorp/terraform:1.0.0'
+    entrypoint: 'sh'
+    args:
+        - '-c'
+        - |
+            if [ -d "solution/gke-autopilot-cluster/environments/dev/" ]; then
+              cd solution/gke-autopilot-cluster/environments/dev
+              terraform init
+            else
+              for dir in solution/gke-autopilot-cluster/environments/*/
+              do 
+                cd ${dir}   
+                env=${dir%*/}
+                env=${env#*/}
+                echo ""
+                echo "*************** TERRAFORM INIT ******************"
+                echo "******* At environment: ${env} ********"
+                echo "*************************************************"
+                terraform init || exit 1
+                cd ../../
+              done
+            fi 
