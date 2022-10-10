@@ -28,7 +28,7 @@ locals {
 
 # GKE cluster
 resource "google_container_cluster" "primary" {
-  name     = "_APP_NAME-${var.env}-gke"
+  name     = "_APP_NAME-${var.env}"
   location = "_REGION"
 
   network    = "${local.network}"
